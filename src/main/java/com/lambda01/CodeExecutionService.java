@@ -26,17 +26,17 @@ public class CodeExecutionService {
         File tempDir = new File(System.getProperty("java.io.tmpdir"));
         File javaFile = new File(tempDir, className + ".java");
 
-        // Write Java code to file
+
         try (FileWriter writer = new FileWriter(javaFile)) {
             writer.write(request.getJavaCode());
         } catch (IOException e) {
             throw new RuntimeException("Error writing Java code to file: " + e.getMessage());
         }
 
-        // Compile Java code
+
         compileJavaCode(javaFile);
 
-        // Execute compiled Java class
+
         executeCompiledJavaClass(className, tempDir, request.getUserInput(), response);
 
         return response;
@@ -60,48 +60,51 @@ public class CodeExecutionService {
 
         Process runProcess = processBuilder.start();
 
-        // Redirect System.in to provide input to the program (if needed)
         OutputStream stdin = runProcess.getOutputStream();
         if (userInput != null && !userInput.isEmpty()) {
-            String[] inputs = userInput.split(" "); // Split inputs by space or other delimiter
-            for (String input : inputs) {
+            String[] inputs = userInput.split(",");
+            for (int i = 0; i < inputs.length; i++) {
+                String input = inputs[i];
                 stdin.write((input + "\n").getBytes());
                 stdin.flush();
             }
+
+
         }
 
-        // Capture output and errors
+
         String output = readStream(runProcess.getInputStream());
         String errors = readStream(runProcess.getErrorStream());
 
-        // Set output and errors in response
+
         response.setOutput(output);
         response.setErrors(errors);
 
-        // Check for infinite loop (add timeout handling)
+
         if (!waitForProcess(runProcess, 10)) {
             runProcess.destroy();
             throw new RuntimeException("Execution timeout or interrupted.");
         }
     }
 
+
     private boolean waitForProcess(Process process, int timeoutInSeconds) throws InterruptedException {
         long startTime = System.currentTimeMillis();
         while (isAlive(process)) {
             if (System.currentTimeMillis() - startTime > timeoutInSeconds * 1000) {
-                return false; // Timeout occurred
+                return false;
             }
             Thread.sleep(100);
         }
-        return true; // Process completed within timeout
+        return true;
     }
 
     private boolean isAlive(Process process) {
         try {
             process.exitValue();
-            return false; // Process has terminated
+            return false;
         } catch (IllegalThreadStateException e) {
-            return true; // Process is still running
+            return true;
         }
     }
 
@@ -116,7 +119,7 @@ public class CodeExecutionService {
         return result.toString();
     }
 
-    // Utility method to extract class name from Java code
+
     private String extractClassName(String javaCode) {
         int classIndex = javaCode.indexOf("public class");
         if (classIndex == -1) {
